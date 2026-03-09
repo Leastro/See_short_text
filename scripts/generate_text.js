@@ -57,6 +57,15 @@ async function askChatGPT() {
 }
 
 async function saveToFirebase() {
+  // 파이어 베이스 연결 확인
+  try {
+    await db.collection('connection_test').doc('ping').set({ time: Date.now() });
+    console.log("✅ 창고 문 확인 완료! 이제 글을 생성합니다.");
+  } catch (e) {
+    console.error("❌ 창고 문이 잠겨있어요! 토큰을 아끼기 위해 중단합니다.");
+    return;
+  }
+
   const postsArray = await askChatGPT();
 
   if (!postsArray || !Array.isArray(postsArray)) {
