@@ -32,16 +32,24 @@ async function askChatGPT() {
           "단, 작성 후 스스로 글을 읽어보고 논리적 오류나 문법적 오류가 없는지 꼭 확인해줘. 그리고 글의 내용이 이상하지 않고 자연스러운지 꼭 확인해줘."+
           "글은 총 5개를 작성해주는데 기존 만들었던 내용과 안 겹치도록 작성해줘."+
           "결과는 반드시 다음과 같은 JSON 키를 포함해야 해: " +
-           "{ \"title\": \"글 제목\", \"content\": \"본문 내용\" }"
+          "{ \"posts\": [ { \"title\": \"제목\", \"content\": \"본문\"} ] }"
         },
       ],
       response_format: { type: "json_object" },
       max_tokens: 3000
     });
 
-    const rawData = JSON.parse(completion.choices[0].message.content);
-    console.log(`✅ ${rawData.posts.length}개의 글 생성 완료!`);
-    return rawData.posts; // 배열만 반환
+    const responseContent = completion.choices[0].message.content;
+    const rawData = JSON.parse(responseContent);
+
+    // posts 키가 있고 배열인지 확인 후 반환
+    if (rawData && Array.isArray(rawData.posts)) {
+      console.log(`✅ ${rawData.posts.length}개의 글 생성 완료!`);
+      return rawData.posts;
+    } else {
+      console.error("❌ 응답 형식이 올바르지 않습니다:", rawData);
+      return null;
+    }
   } catch (error) {
     console.error("❌ ChatGPT 에러:", error.message);
     return null;
@@ -57,12 +65,11 @@ async function saveToFirebase() {
   }
 
   try {
-    // 배열을 돌면서 하나씩 Firestore에 추가
     for (const post of postsArray) {
       await db.collection('posts').add({
         title: post.title,
         content: post.content,
-        topic: post.category,
+        topic: post.category || "일반", // category가 없을 경우 대비
         createdAt: admin.firestore.FieldValue.serverTimestamp()
       });
       console.log(`📌 저장 완료: ${post.title}`);
@@ -73,5 +80,4 @@ async function saveToFirebase() {
   }
 }
 
-// 실행
 saveToFirebase();
